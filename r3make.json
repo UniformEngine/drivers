@@ -1,0 +1,41 @@
+{
+  "UFR": {
+    "flags": ["-Wall", "-Werror", "-std=c99", "-O3", "-march=x86-64"],
+    "defines": ["__UF_LINK_DLL__"],
+
+    "src": ["src/UFR/UFR.c"],
+    "include": [".", "../engine", "external/deps"],
+
+    "deps": {"../engine/build": ["UFC"], "external/deps/bin": ["R3"]},
+
+    "name": "UFR",
+    "type": "dll",
+    "dest": "build"
+  },
+
+  "UFA": {
+    "flags": ["-Wall", "-Werror", "-std=c99", "-O3", "-march=x86-64"],
+
+    "src": ["src/UFA/UFA.c"],
+    "include": [".", "../engine", "external/deps"],
+
+    "deps": {"../engine/build": ["UFC"], "external/deps/bin": ["R3"]},
+
+    "name": "UFA",
+    "type": "dll",
+    "dest": "build"
+  },
+
+  "UFS": {
+    "flags": ["-Wall", "-Werror", "-std=c99", "-O3", "-march=x86-64"],
+
+    "src": ["src/UFS/UFS.c"],
+    "include": [".", "../engine", "external/deps"],
+
+    "deps": {"../engine/build": ["UFC"], "external/deps/bin": ["R3"]},
+
+    "name": "UFS",
+    "type": "dll",
+    "dest": "build"
+  }
+}

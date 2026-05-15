@@ -1,0 +1,4 @@
+build/*
+.cache/*
+external/deps/bin
+compile_commands.json
