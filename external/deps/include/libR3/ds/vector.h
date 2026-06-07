@@ -8,7 +8,6 @@ typedef struct R3Vector {
     u64* htoi;  // [handle] = idx
     u64* itoh;  // [idx] = handle
     ptr data;
-
 } R3Vector;
 
 R3_PUBLIC_API R3Result r3NewVector(u64 slots, u64 stride, R3Vector* vector);

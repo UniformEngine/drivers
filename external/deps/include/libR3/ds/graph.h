@@ -1,54 +1,32 @@
 #ifndef __R3_GRAPH_H__
 #define __R3_GRAPH_H__
 
-#include <include/libR3/ds/soa.h>
-#include <include/libR3/math/math.h>
+#include <include/libR3/r3def.h>
 
-/**
- * Vertex layout:
- * vertexA  [<u64>]
- * vertexB  [<u64>]
- * index    [<u64>]
- * data     [stride]
- * 
- * Edge layout:
- * vertexA  [<u64>]
- * vertexB  [<u64>]
- * index    [<u64>]
- * data     [stride]
- * */
+typedef struct R3DAGBuildDesc {
+    u32* targets;
+    u32* weights;
+    u32 count;
+    u32 from;
+} R3DAGBuildDesc;
 
-typedef struct R3Edge {
-    u64 vertexA;
-    u64 vertexB;
-    u64 index;
-    ptr data;
-} R3Edge;
+typedef struct R3DAG { ptr data; } R3DAG;
 
-typedef struct R3Vertex {
-    u64 vertexA;
-    u64 vertexB;
-    u64 index;
-    ptr data;
-} R3Vertex;
+R3_PUBLIC_API R3Result r3NewDAG(u32 vmax, u32 emax, u64 stride, R3DAG* graph);
+R3_PUBLIC_API R3Result r3DelDAG(R3DAG* graph);
+R3_PUBLIC_API none r3PrintDAG(R3DAG* graph);
 
-typedef struct R3GraphDesc {
-    u64 vertexStride;
-    u64 edgeStride;
-    u32 vertexMax;
-    u32 edgeMax;
-} R3GraphDesc;
+R3_PUBLIC_API u32 r3DAGEdges(R3DAG* graph);
+R3_PUBLIC_API u64 r3DAGStride(R3DAG* graph);
+R3_PUBLIC_API u32 r3DAGVertices(R3DAG* graph);
+R3_PUBLIC_API u32* r3DAGIndegree(R3DAG* graph);
 
-typedef struct R3Graph {
-    R3SOA vertices;
-    R3SOA edges;
-} R3Graph;
+R3_PUBLIC_API u32* r3SortDAG(R3DAG* graph);
+R3_PUBLIC_API u32* r3DFSDAG(R3DAG* graph);
 
-R3_PUBLIC_API R3Result r3NewGraph(R3GraphDesc desc, R3Graph* graph);
-R3_PUBLIC_API R3Result r3DelGraph(R3Graph* graph);
-
-R3_PUBLIC_API R3Result r3SetVertex(Vec2 vertex, R3Graph* graph);
-R3_PUBLIC_API R3Vertex r3GetVertex(Vec2 vertex, R3Graph* graph);
-R3_PUBLIC_API R3Result r3RemVertex(Vec2 vertex, R3Graph* graph);
+R3_PUBLIC_API u32 r3NewDAGVertex(ptr data, R3DAG* graph);
+R3_PUBLIC_API R3Result r3BuildDAGVertex(R3DAGBuildDesc desc, R3DAG* graph);
+R3_PUBLIC_API ptr r3GetDAGVertex(u32 vertex, R3DAG* graph);
+R3_PUBLIC_API R3Result r3SetDAGVertex(u32 vertex, ptr data, R3DAG* graph);
 
 #endif // __R3_GRAPH_H__

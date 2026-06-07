@@ -36,15 +36,17 @@ UFHandle UFSNewScene(u32 entityMax) {
     scene.liveComponents = r3NewArray(UFS_COMPONENT_MAX, sizeof(UFHandle));
     scene.liveSystems = r3NewArray(UFS_SYSTEM_MAX, sizeof(UFHandle));
     scene.liveQueries = r3NewArray(UFS_QUERY_MAX, sizeof(UFHandle));
+    scene.liveEntities = r3NewArray(entityMax, sizeof(UFHandle));
     scene.entityMax = entityMax;
 
-    if (!scene.liveArchetypes || !scene.liveComponents || !scene.liveQueries || !scene.liveSystems) {
+    if (!scene.liveArchetypes || !scene.liveComponents || !scene.liveEntities || !scene.liveQueries || !scene.liveSystems) {
         if (scene.liveArchetypes) r3DelArray(scene.liveArchetypes);
         UFREDelPool(&scene.archetypePool);
 
         if (scene.liveComponents) r3DelArray(scene.liveComponents);
         UFREDelPool(&scene.componentPool);
 
+        if (scene.liveEntities) r3DelArray(scene.liveEntities);
         UFREDelPool(&scene.entityPool);
 
         if (scene.liveSystems) r3DelArray(scene.liveSystems);
@@ -81,6 +83,7 @@ UFResult UFSDelScene(UFHandle handle) {
     r3DelArray(s->liveComponents);
 
     UFREDelPool(&s->entityPool);
+    r3DelArray(s->liveEntities);
 
     UFREDelPool(&s->queryPool);
     r3DelArray(s->liveQueries);

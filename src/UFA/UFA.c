@@ -116,8 +116,8 @@ static inline void _parseASSET(char** src) {
 UFResult _load(char* path) {
     if (!path) return UF_ERROR;
 
-    char* src = r3NewFile(2 * KiB);
-    if (!src || !r3LoadFile(path, src)) {
+    char* src = r3LoadFile(path);
+    if (!src) {
         r3LogStdOutF(R3_LOG_ERROR, "FAILED TO LOAD UFA: %s\n", path);
         return UF_ERROR;
     } r3LogStdOutF(R3_LOG_INFO, "LOADED UFA: %s\n", path);

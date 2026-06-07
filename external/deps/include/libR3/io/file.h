@@ -32,7 +32,7 @@ R3_PUBLIC_API R3Result r3DelFile(ptr file);
 R3_PUBLIC_API R3Result r3SeekFile(u64 bytes, ptr file);
 R3_PUBLIC_API R3Result r3RewindFile(u64 bytes, ptr file);
 
-R3_PUBLIC_API R3Result r3LoadFile(char* path, ptr file);
+R3_PUBLIC_API ptr r3LoadFile(char* path);
 R3_PUBLIC_API R3Result r3SaveFile(u64 bytes, char* path, ptr file);
 
 R3_PUBLIC_API u64 r3SumFileChars(char* file);

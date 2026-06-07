@@ -82,6 +82,7 @@ typedef enum R3Result {
 #define FOR_I(start, stop, step) for (u32 i = start; i < stop; i += step)
 #define FOR_J(start, stop, step) for (u32 j = start; j < stop; j += step)
 #define FOR_K(start, stop, step) for (u32 k = start; k < stop; k += step)
+#define FOR_L(start, stop, step) for (u32 l = start; l < stop; l += step)
 #define FOR_U(start, stop, step) for (u32 u = start; u < stop; u += step)
 #define FOR_V(start, stop, step) for (u32 v = start; v < stop; v += step)
 #define FOR(type, iter, start, stop, step) for (type iter = start; iter < stop; iter += step)
@@ -118,7 +119,7 @@ typedef int (*R3CompareFNPTR)(ptr a, ptr b);
 #ifdef R3_BUILD_DLL
     #ifdef _MSC_VER
         #define R3_PUBLIC_API __declspec(dllexport)
-    #elif #defined (__GNUC__) || defined (__clang__)
+    #elif defined (__GNUC__) || defined (__clang__)
         #define R3_PUBLIC_API __attribute__((visibility("default")))
     #else
         #define R3_PUBLIC_API

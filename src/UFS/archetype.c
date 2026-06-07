@@ -1,5 +1,5 @@
 #include "_UFS.h"
-
+#include <stdio.h>
 
 UFHandle UFSNewArchetype(u32 capacity, u8 ncomponents, UFHandle* components, UFSScene* scene) {
     if (!capacity || !ncomponents || !components) return UF_INVALID;
@@ -32,9 +32,9 @@ UFHandle UFSNewArchetype(u32 capacity, u8 ncomponents, UFHandle* components, UFS
         (sizeof(u32) * scene->entityMax) +
         (sizeof(u32) * UFS_COMPONENT_MAX);
 
-    u64 size = metadata + data;
-
-    arch.start = r3AllocMemory(size);
+    arch.dataSize = data;
+    arch.totalSize = metadata + data;
+    arch.start = r3AllocMemory(arch.totalSize);
     if (!arch.start) return UF_INVALID;
 
     arch.components = (UFHandle*)arch.start;
@@ -70,10 +70,10 @@ UFHandle UFSNewArchetype(u32 capacity, u8 ncomponents, UFHandle* components, UFS
         }
     }
 
-    arch.ncomponents = ncomponents;
+    arch.count = 0;
     arch.nfields = fields;
     arch.capacity = capacity;
-    arch.count = 0;
+    arch.ncomponents = ncomponents;
     arch.lid = r3ArrayCount(scene->liveArchetypes);
     arch.id = UFREResourceIndex(handle, &scene->archetypePool);
 
@@ -166,17 +166,29 @@ UFResult UFSSetComponent(UFHandle entity, UFHandle component, u32 field, void* d
     if (!data) return UF_ERROR;
 
     UFSEntity* e = UFREResourcePointer(entity, &scene->entityPool);
-    if (!e || e->archetype == UF_INVALID) return UF_ERROR;
+    if (!e || e->archetype == UF_INVALID) {
+        printf("entity %llu is invalid\n", entity);
+        return UF_ERROR;
+    }
 
     UFSArchetype* a = UFREResourcePointer(e->archetype, &scene->archetypePool);
     UFSComponent* c = UFREResourcePointer(component, &scene->componentPool);
-    if (!a || !c) return UF_ERROR;
+    if (!a || !c) {
+        printf("archetype %llu or component %llu is invalid\n", e->archetype, component);
+        return UF_ERROR;
+    }
 
     u32 slot = a->eMap[e->id];
-    if (slot >= a->count || field >= c->fields) return UF_ERROR;
+    if (slot >= a->count || field >= c->fields) {
+        printf("slot %u or field %u is out of bounds\n", slot, field);
+        return UF_ERROR;
+    }
 
     u32 componentBase = a->cMap[c->id];
-    if (componentBase + field >= a->nfields) return UF_ERROR;
+    if (componentBase + field >= a->nfields) {
+        printf("component base %u or field %u is out of bounds\n", componentBase, field);
+        return UF_ERROR;
+    }
 
     void* componentField = (u8*)a->data + a->offsets[componentBase + field];
 

@@ -5,21 +5,7 @@
 #include <include/libR3/mem/arena.h>
 #include <include/libR3/math/math.h>
 
-typedef struct R3GridHeader {
-    u64 rawA;
-    u64 gridA;
-    u64 cellA;
-    Vec2 rawWH;
-    Vec2 gridWH;
-    Vec2 cellWH;
-    u64 cellStride;
-    R3ArenaAllocator arena;
-} R3GridHeader;
-
-typedef struct R3GridCell { u64 mask; ptr data; } R3GridCell;
-typedef struct R3Grid {
-    ptr data;
-} R3Grid;
+typedef struct R3Grid { ptr data; } R3Grid;
 
 R3_PUBLIC_API R3Result r3DelGrid(R3Grid* grid);
 R3_PUBLIC_API Vec2 r3ToGridPos(Vec2 xy, R3Grid* grid);

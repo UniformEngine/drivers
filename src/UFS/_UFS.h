@@ -12,12 +12,21 @@
 #define UFS_COMPONENT_MAX           64 * UFS_IDENTITY_MAX
 #define UFS_ARCHETYPE_MAX           64 * UFS_IDENTITY_MAX
 
+static const u32 UFS_MAGIC = ((0x55 << 24) & 0xFFFF)|((0x46 << 16) & 0xFF)|((0x53 << 8) & 0xFF)|0; // 'U'|'F'|'S'|0
+static const u32 UFS_VERSION = 1;
+
 typedef struct UFSEntity {
     UFHandle archetype;
     u64 identity[4];
     u32 ncomponents;
+    u32 lid;
     u32 id;
 } UFSEntity;
+
+typedef struct UFSSerialEntity {
+    u64 identity[4];
+    u32 ncomponents;
+} UFSSerialEntity;
 
 typedef struct UFSComponent {
     u64 identity[4];
@@ -27,6 +36,13 @@ typedef struct UFSComponent {
     u32 lid;
     u32 id;
 } UFSComponent;
+
+typedef struct UFSSerialComponent {
+    u64 identity[4];
+    void* strides;
+    u32 fields;
+    u32 slots;
+} UFSSerialComponent;
 
 typedef struct UFSArchetype {
     UFHandle* components;
@@ -38,6 +54,8 @@ typedef struct UFSArchetype {
     void* data;     // [offset + slot * stride] = data
     void* start;
 
+    u64 dataSize;
+    u64 totalSize;
     u64 identity[4];
     u32 ncomponents;
     u32 nfields;
@@ -47,6 +65,18 @@ typedef struct UFSArchetype {
     u32 lid;
     u32 id;
 } UFSArchetype;
+
+typedef struct UFSSerialArchetype {
+    u64 identity[4];
+    void* data;
+    void* sMap;
+
+    u32 ncomponents;
+    u32 capacity;
+    u32 nfields;
+    u32 count;
+    u64 size;
+} UFSSerialArchetype;
 
 typedef struct UFSQuery {
     UFHandle archetype;
@@ -72,6 +102,7 @@ typedef struct UFSScene {
     UFResourcePool queryPool;
     UFHandle* liveArchetypes;
     UFHandle* liveComponents;
+    UFHandle* liveEntities;
     UFHandle* liveSystems;
     UFHandle* liveQueries;
     u32 entityMax;

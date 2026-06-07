@@ -11,16 +11,10 @@ typedef struct R3ArrayHeader {
     u16 stride;
 } R3ArrayHeader;
 
-// NOTE: If called the reserved size will be used to allocate ALL future calls to `NewArray`
-R3_PUBLIC_API R3Result r3ArrayReserve(u64 size);
-// NOTE: If called the reserved memory will be freed thus ALL arrays created after a preceeding `ArrayReserve` call are NULL
-R3_PUBLIC_API R3Result r3ArrayUnreserve(none);
-
 R3_PUBLIC_API u8 r3ArrayFull(ptr array);
 R3_PUBLIC_API u64 r3ArrayCount(ptr array);
 R3_PUBLIC_API u64 r3ArraySlots(ptr array);
 R3_PUBLIC_API u16 r3ArrayStride(ptr array);
-R3_PUBLIC_API R3Result r3ArrayHeader(R3ArrayHeader* header, ptr array);
 
 R3_PUBLIC_API R3Result r3DelArray(ptr array);
 R3_PUBLIC_API ptr r3NewArray(u64 slots, u16 stride);

@@ -4,7 +4,7 @@
 #include <include/uniform/uniform.h>
 
 typedef struct UFSComponentDesc {
-    u64 strides[255];
+    u64* strides;
     u32 fields;
     u32 slots;
 } UFSComponentDesc;
@@ -28,9 +28,9 @@ typedef struct UFSMultiQueryDesc {
 } UFSMultiQueryDesc;
 
 typedef struct UFSView {
-    void* data;
     u64* offsets;
     u64* strides;
+    void* data;
     u32* map;
     u32 count;
     u32 fields;
@@ -41,7 +41,7 @@ typedef struct UFSProjectionDesc {
         UFHandle component;
         void** dest;
         u32 field;
-    } targets[255];
+    } targets[256];
     u32 count;
 } UFSProjectionDesc;
 
@@ -52,9 +52,35 @@ typedef struct UFSSystemDesc {
     void* user;
 } UFSSystemDesc;
 
+typedef struct UFSCapture {
+    struct {
+        u64 size;
+        u32 magic;
+        u32 version;
+
+        u32 max;
+        u32 nentities;
+        u32 ncomponents;
+        u32 narchetypes;
+    } header;
+    struct {
+        void* entity;
+        void* component;
+        void* archetype;
+    } data;
+} UFSCapture;
+
 typedef struct UFS {
     UFHandle (*newScene)(u32 entityMax);
     UFResult (*delScene)(UFHandle scene);
+
+    UFSCapture (*newCapture)(UFHandle scene);
+    UFResult (*delCapture)(UFSCapture* capture);
+    u8 (*compareCapture)(UFSCapture* a, UFSCapture* b);
+
+    UFResult (*compile)(char* path, UFSCapture* capture);
+    UFHandle (*restore)(UFSCapture* capture);
+    UFSCapture (*decompile)(char* path);
 
     UFHandle (*newEntity)(UFHandle scene);
     UFResult (*delEntity)(UFHandle entity, UFHandle scene);

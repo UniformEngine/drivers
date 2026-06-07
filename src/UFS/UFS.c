@@ -1,4 +1,4 @@
-#include "scene.c"
+#include "capture.c"
 
 struct UFSInternal {
     UFInterface core;
@@ -11,10 +11,35 @@ UFHandle newScene(u32 entityMax) {
     return UFSNewScene(entityMax);
 }
 
-UFResult delScene(UFHandle handle) {
-    return UFSDelScene(handle);
+UFResult delScene(UFHandle scene) {
+    return UFSDelScene(scene);
 }
 
+
+UFSCapture newCapture(UFHandle scene) {
+    if (!UFREResourceValid(scene, &UFSScenePool)) return (UFSCapture){0};
+    return UFSNewCapture(scene);
+}
+
+UFResult delCapture(UFSCapture* capture) {
+    if (!capture) return UF_ERROR;
+    return UFSDelCapture(capture);
+}
+
+UFHandle restore(UFSCapture* capture) {
+    if (!capture) return UF_INVALID;
+    return UFSRestoreCapture(capture);
+}
+
+UFResult compileCapture(char* path, UFSCapture* capture) {
+    if (!path || !capture) return UF_ERROR;
+    return UFSCompileCapture(path, capture);
+}
+
+UFSCapture decompileCapture(char* path) {
+    if (!path) return (UFSCapture){0};
+    return UFSDecompileCapture(path);
+}
 
 UFHandle newEntity(UFHandle scene) {
     if (!UFREResourceValid(scene, &UFSScenePool)) return UF_INVALID;
@@ -172,11 +197,15 @@ void* viewField(UFHandle component, u32 field, UFSView* view, UFHandle scene) {
 }
 
 UFResult setComponent(UFHandle entity, UFHandle component, u32 field, void* data, UFHandle scene) {
-    if (!UFREResourceValid(scene, &UFSScenePool)) return UF_ERROR;
+    if (!UFREResourceValid(scene, &UFSScenePool)) {
+        return UF_ERROR;
+    }
 
     UFSScene* s = UFREResourcePointer(scene, &UFSScenePool);
     if (!UFREResourceValid(entity, &s->entityPool)
-    ||  !UFREResourceValid(component, &s->componentPool)) return UF_ERROR;
+    ||  !UFREResourceValid(component, &s->componentPool)) {
+        return UF_ERROR;
+    }
 
     return UFSSetComponent(entity, component, field, data, s);
 }
@@ -277,7 +306,30 @@ none driverInit(void) {
 
 none driverExit(void) {
     FOR(u32, s, 0, r3ArrayCount(UFSLiveScenes), 1) {
-        UFSDelScene(UFSLiveScenes[s]);
+        UFHandle handle = UFSLiveScenes[s];
+        UFSScene* s = UFREResourcePointer(handle, &UFSScenePool);
+
+        FOR(u32, a, 0, r3ArrayCount(s->liveArchetypes), 1) {
+            UFSDelArchetype(s->liveArchetypes[a], s);
+        }
+        UFREDelPool(&s->archetypePool);
+        r3DelArray(s->liveArchetypes);
+
+        FOR(u32, c, 0, r3ArrayCount(s->liveComponents), 1) {
+            UFSDelComponent(s->liveComponents[c], s);
+        }
+        UFREDelPool(&s->componentPool);
+        r3DelArray(s->liveComponents);
+
+        UFREDelPool(&s->entityPool);
+
+        UFREDelPool(&s->queryPool);
+        r3DelArray(s->liveQueries);
+
+        UFREDelPool(&s->systemPool);
+        r3DelArray(s->liveSystems);
+
+        UFREDelResource(handle, &UFSScenePool);
     }
 
     UFREDelPool(&UFSScenePool);
@@ -287,6 +339,14 @@ none driverExit(void) {
 UFS API = {
     .newScene = newScene,
     .delScene = delScene,
+
+    .newCapture = newCapture,
+    .delCapture = delCapture,
+    .compareCapture = UFSCompareCapture,
+
+    .compile = compileCapture,
+    .restore = restore,
+    .decompile = decompileCapture,
 
     .newEntity = newEntity,
     .delEntity = delEntity,
