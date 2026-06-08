@@ -1,4 +1,3 @@
-#pragma once
 #include "_UFA.h"
 
 UFResult UFANewPack(char* tag) {

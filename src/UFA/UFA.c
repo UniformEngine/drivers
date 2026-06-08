@@ -37,8 +37,8 @@ static void _delAssets(ptr value) {
     switch(asset->header.type) {
         default: break;
         case (UFA_MESH): {
-            UFRIDelVertexBuffer(asset->mesh.vertex.vbo);
-            UFRIDelIndexBuffer(asset->mesh.index.ibo);
+            UFRIDelVertexBuffer(asset->mesh.vbo);
+            UFRIDelIndexBuffer(asset->mesh.ibo);
         } break;
         case (UFA_SHADER): {
             UFRIDelShader(asset->shader.shader);
@@ -57,15 +57,18 @@ none driverExit(void) {
 }
 
 static UFA API = {
-    ._loadTexture = _lt,
-
     .newPack = UFANewPack,
     .delPack = UFADelPack,
     .packAsset = UFAPackAsset,
 
     .loadMesh = UFALoadMesh,
+
+    .getShader = UFAGetShader,
     .loadShader = UFALoadShader,
+
+    .getTexture = UFAGetTexture,
     .loadTexture = UFALoadTexture,
+
     .unloadAsset = UFAUnloadAsset,
 };
 

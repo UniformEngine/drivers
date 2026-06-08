@@ -6,7 +6,7 @@
 #define UFA_PACK_MAX (1 << 12)
 #define UFA_ASSET_MAX (1 << 16)
 #define UFA_PACK_DATA_MAX 64 * MiB
-#define UFA_SIGNATURE (0x55 << 24)|(0x46 << 16)|(0x41 << 8)|0
+#define UFA_SIGNATURE (0x55 << 24)|(0x46 << 16)|(0x41 << 8)|0   // U|F|A|0
 
 typedef enum UFAssetType {
     UFA_MESH,
