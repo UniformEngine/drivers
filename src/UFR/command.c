@@ -41,7 +41,7 @@ void _render(void) {
     UFEXRunPipeline(UFRInternal.pipeline);
 }
 
-void commandViewPort(u32 x, u32 y, u32 w, u32 h) {
+void _commandViewPort(u32 x, u32 y, u32 w, u32 h) {
     UFRCommand cmd = {
         .type = UFR_CMD_VIEWPORT,
         .viewport.x = x,
