@@ -15,8 +15,10 @@ none driverInit(void) {
 
 static void _delPacks(ptr value) {
     UFAPack* pack = (UFAPack*)value;
+    if (!pack) return;
+
     if (pack->header.table) {
-        r3FreeMemory(pack->header.table);
+        r3DelArray(pack->header.table);
         pack->header.table = NULL;
     } if (pack->map) {
         r3DelHashArray(pack->map);
@@ -29,6 +31,8 @@ static void _delPacks(ptr value) {
 
 static void _delAssets(ptr value) {
     UFAsset* asset = (UFAsset*)value;
+    if (!asset) return;
+
     if (asset->data) {
         r3FreeMemory(asset->data);
         asset->data = NULL;
@@ -44,7 +48,10 @@ static void _delAssets(ptr value) {
             UFRIDelShader(asset->shader.shader);
         } break;
         case (UFA_TEXTURE): {
+            UFRITextureDesc desc = {0};
+            UFRIGetDesc(asset->texture.texture, &desc);
             UFRIDelTexture(asset->texture.texture);
+            free(desc.data);
         } break;
     }
 }
@@ -59,6 +66,8 @@ none driverExit(void) {
 static UFA API = {
     .newPack = UFANewPack,
     .delPack = UFADelPack,
+    .loadPack = UFALoadPack,
+    .bakePack = UFABakePack,
     .packAsset = UFAPackAsset,
 
     .loadMesh = UFALoadMesh,

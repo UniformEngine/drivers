@@ -184,7 +184,7 @@ none driverInit(void) {
     }
 
     UFRInternal._offscreenShader = UFRINewShader((UFRIShaderDesc){
-        .type = UFRI_SHADER_PIXEL,
+        .use = UFRI_SHADER_PIXEL,
         .vertex =   "#version 460\n"
                     "layout(location=0) in vec3 _position;\n"
                     "layout(location=3) in vec2 _texture;\n"

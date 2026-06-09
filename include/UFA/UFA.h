@@ -32,7 +32,7 @@ typedef struct UFAShaderDesc {
     char* fragment;
     char* vertex;
     char* tag;
-    u32 type;
+    u32 use;
 } UFAShaderDesc;
 
 typedef struct UFAShader {
@@ -42,7 +42,8 @@ typedef struct UFAShader {
 typedef struct UFA {
     UFResult (*newPack)(char* tag);
     UFResult (*delPack)(char* pack);
-    UFResult (*loadPack)(char* path);
+    UFResult (*loadPack)(char* tag, char* path);
+    UFResult (*bakePack)(char* path, char* pack);
     UFResult (*packAsset)(char* asset, char* pack);
 
     UFResult (*loadTexture)(UFATextureDesc desc);

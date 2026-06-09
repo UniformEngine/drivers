@@ -1,8 +1,6 @@
 #include "_UFA.h"
 #include <string.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <include/STB/stb_image.h>
+#include <stdlib.h>
 
 UFResult UFALoadMesh(UFAMeshDesc desc) {
     if (!desc.tag || !desc.path) return UF_ERROR;
@@ -16,7 +14,10 @@ UFResult UFALoadMesh(UFAMeshDesc desc) {
     r3DelFile(file);
     if (!r3SetHashArray(desc.tag, &asset, UFAInternal.assets.map)) {
         return UF_ERROR;
-    } else return UF_OK;
+    }
+
+    UFAInternal.assets.count++;
+    return UF_OK;
 }
 
 
@@ -24,7 +25,9 @@ UFAShader UFAGetShader(char* tag) {
     UFAShader shader = {0};
     if (!tag) return shader;
     if (r3GetHashArrayPtr(tag, UFAInternal.assets.map)) {
-        shader = ((UFAsset*)r3GetHashArrayPtr(tag, UFAInternal.assets.map))->shader;
+        UFAsset* a = r3GetHashArrayPtr(tag, UFAInternal.assets.map);
+        if (a->header.type != UFA_SHADER) return shader;
+        shader = a->shader;
     } return shader;
 }
 
@@ -32,53 +35,53 @@ UFResult UFALoadShader(UFAShaderDesc desc) {
     if (!desc.tag || !desc.vertex || !desc.fragment) return UF_ERROR;
     if (r3GetHashArrayPtr(desc.tag, UFAInternal.assets.map)) return UF_ERROR;
 
-    char* vfile = r3LoadFile(desc.vertex);
-    char* ffile = r3LoadFile(desc.fragment);
-    if (!vfile || !ffile) {
-        if (vfile) r3DelFile(vfile);
-        if (ffile) r3DelFile(ffile);
+    char* vs = r3LoadFile(desc.vertex);
+    char* fs = r3LoadFile(desc.fragment);
+    if (!vs || !fs) {
+        if (vs) r3DelFile(vs);
+        if (fs) r3DelFile(fs);
         return UF_ERROR;
     }
 
     UFRIResource shader = UFRINewShader((UFRIShaderDesc){
-        .vertex = vfile,
-        .fragment = ffile,
-        .type = desc.type,
+        .vertex = vs,
+        .fragment = fs,
+        .use = desc.use,
     });
     if (shader.handle == UF_INVALID) {
-        r3DelFile(vfile);
-        r3DelFile(ffile);
+        r3DelFile(vs);
+        r3DelFile(fs);
         return UF_ERROR;
     }
 
-    u64 vsize = r3FileSize(vfile);
-    u64 fsize = r3FileSize(ffile);
+    u64 vsize = r3FileSize(vs);
+    u64 fsize = r3FileSize(fs);
 
     u64 dataLen = vsize + fsize + sizeof(u64) * 2;
     void* data = r3AllocMemory(dataLen);
     if (!data) {
-        r3DelFile(vfile);
-        r3DelFile(ffile);
+        r3DelFile(vs);
+        r3DelFile(fs);
         return UF_ERROR;
     }
 
     if (!r3WriteMemory(sizeof(u64), &vsize, data)
-    ||  !r3WriteMemory(vsize, vfile, data + sizeof(u64))
-    ||  !r3WriteMemory(sizeof(u64), &fsize, data + vsize + sizeof(u64))
-    ||  !r3WriteMemory(fsize, ffile, data + vsize + sizeof(u64) * 2)) {
+    ||  !r3WriteMemory(vsize, vs, (u8*)data + sizeof(u64))
+    ||  !r3WriteMemory(sizeof(u64), &fsize, (u8*)data + vsize + sizeof(u64))
+    ||  !r3WriteMemory(fsize, fs, (u8*)data + vsize + sizeof(u64) * 2)) {
         r3FreeMemory(data);
-        r3DelFile(vfile);
-        r3DelFile(ffile);
+        r3DelFile(vs);
+        r3DelFile(fs);
         return UF_ERROR;
     }
-    r3DelFile(vfile);
-    r3DelFile(ffile);
+    r3DelFile(vs);
+    r3DelFile(fs);
 
     UFAsset asset = {
         .header.tagLen = strlen(desc.tag),
         .header.dataLen = dataLen,
         .header.type = UFA_SHADER,
-        .header.use = desc.type,
+        .header.use = desc.use,
         .data = data,
 
         .shader.shader = shader,
@@ -87,7 +90,10 @@ UFResult UFALoadShader(UFAShaderDesc desc) {
     if (!r3SetHashArray(desc.tag, &asset, UFAInternal.assets.map)) {
         r3FreeMemory(data);
         return UF_ERROR;
-    } return UF_OK;
+    }
+
+    UFAInternal.assets.count++;
+    return UF_OK;
 }
 
 
@@ -95,7 +101,9 @@ UFATexture UFAGetTexture(char* tag) {
     UFATexture texture = {0};
     if (!tag) return texture;
     if (r3GetHashArrayPtr(tag, UFAInternal.assets.map)) {
-        texture = ((UFAsset*)r3GetHashArrayPtr(tag, UFAInternal.assets.map))->texture;
+        UFAsset* a = r3GetHashArrayPtr(tag, UFAInternal.assets.map);
+        if (a->header.type != UFA_TEXTURE) return texture;
+        texture = a->texture;
     } return texture;
 }
 
@@ -108,24 +116,26 @@ UFResult UFALoadTexture(UFATextureDesc desc) {
         return UF_ERROR;
     }
 
-    u64 dataLen = r3FileSize(file);
+    u64 dataLen = r3FileSize(file) + sizeof(u32) * 3;
     void* data = r3AllocMemory(dataLen);
     if (!data) {
         r3DelFile(file);
         return UF_ERROR;
     }
 
-    // TODO: prefix asset data with descriptor use, memuse, and format (12 bytes)
-    if (!r3WriteMemory(dataLen, file, data)) {
+    if (!r3WriteMemory(sizeof(u32), &desc.use, data)
+    ||  !r3WriteMemory(sizeof(u32), &desc.memuse, (u8*)data + sizeof(u32))
+    ||  !r3WriteMemory(sizeof(u32), &desc.format, (u8*)data + sizeof(u32) * 2)
+    ||  !r3WriteMemory(r3FileSize(file), file, (u8*)data + sizeof(u32) * 3)) {
         r3FreeMemory(data);
         r3DelFile(file);
         return UF_ERROR;
     } r3DelFile(file);
 
-    i32 wh[2] = {0};
     i32 channels = 0;
+    i32 width, height;
     stbi_set_flip_vertically_on_load(1);
-    void* textureData = stbi_load(desc.path, &wh[0], &wh[1], &channels, 0);
+    void* textureData = stbi_load(desc.path, &width, &height, &channels, 0);
     if (!textureData) {
         r3FreeMemory(data);
         return UF_ERROR;
@@ -135,12 +145,13 @@ UFResult UFALoadTexture(UFATextureDesc desc) {
         .use = desc.use,
         .memuse = desc.memuse,
         .format = desc.format,
-        .height = wh[1],
-        .width = wh[0],
+        .height = height,
+        .width = width
+        ,
         .data = textureData,
     });
     if (texture.handle == UF_INVALID) {
-        stbi_image_free(textureData);
+        free(textureData);
         r3FreeMemory(data);
         return UF_ERROR;
     }
@@ -156,10 +167,13 @@ UFResult UFALoadTexture(UFATextureDesc desc) {
     };
 
     if (!r3SetHashArray(desc.tag, &asset, UFAInternal.assets.map)) {
-        stbi_image_free(textureData);
+        free(textureData);
         r3FreeMemory(data);
         return UF_ERROR;
-    } return UF_OK;
+    }
+
+    UFAInternal.assets.count++;
+    return UF_OK;
 }
 
 
@@ -180,9 +194,10 @@ UFResult UFAUnloadAsset(char* tag) {
             void* data = NULL;
             UFRIGetData(asset.texture.texture, &data);
             UFRIDelShader(asset.texture.texture);
-            if (data) stbi_image_free(data);
+            if (data) free(data);
         } break;
     } if (asset.data) r3FreeMemory(asset.data);
 
+    UFAInternal.assets.count--;
     return UF_OK;
 }

@@ -2,11 +2,14 @@
 
 #include <include/UFA/UFA.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <include/STB/stb_image.h>
+
 #define UFA_VERSION 1
 #define UFA_PACK_MAX (1 << 12)
 #define UFA_ASSET_MAX (1 << 16)
 #define UFA_PACK_DATA_MAX 64 * MiB
-#define UFA_SIGNATURE (0x55 << 24)|(0x46 << 16)|(0x41 << 8)|0   // U|F|A|0
+static const u32 UFA_SIGNATURE = (0x55 << 24)|(0x46 << 16)|(0x41 << 8)|0;   // U|F|A|0
 
 typedef enum UFAssetType {
     UFA_MESH,
@@ -35,6 +38,7 @@ typedef struct UFAPack {
     struct {
         u32 sig;
         u32 ver;
+        u32 size;
         u32 count;
         u64* table;
     } header;
@@ -42,9 +46,6 @@ typedef struct UFAPack {
     void* map;
 
     u64 capacity;
-    u64 used;
-
-    char* path;
     char* tag;
 } UFAPack;
 
