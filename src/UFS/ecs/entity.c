@@ -1,4 +1,5 @@
-#include "_UFS.h"
+#include "../_UFS.h"
+
 
 UFHandle UFSNewEntity(UFSScene* scene) {
     UFHandle handle = UFRENewResource(NULL, &scene->entityPool);

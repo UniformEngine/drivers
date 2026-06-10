@@ -1,4 +1,4 @@
-#include "_UFS.h"
+#include "../_UFS.h"
 
 UFHandle UFSNewQuery(UFSMonoQueryDesc desc, UFSScene* scene) {
     UFHandle handle = UFRENewResource(NULL, &scene->queryPool);

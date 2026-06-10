@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "asset/mesh/parser.c"
+#include "asset/shader/parser.c"
+#include "asset/texture/parser.c"
+
+
 UFResult UFANewPack(char* tag) {
     if (!tag) return UF_ERROR;
 
@@ -140,73 +145,6 @@ UFResult UFABakePack(char* path, char* pack) {
     return UF_OK;
 }
 
-
-void _UFAParseShader(UFAsset* asset) {
-    if (!asset || !asset->data) return;
-    if (asset->header.type != UFA_SHADER) return;
-
-    u64 vsize = 0;
-    u64 fsize = 0;
-    r3ReadMemory(sizeof(u64), asset->data, &vsize);
-    r3ReadMemory(sizeof(u64), (u8*)asset->data + vsize + sizeof(u64), &fsize);
-
-    char* vs = r3AllocMemory(vsize + 1);
-    char* fs = r3AllocMemory(fsize + 1);
-    if (!vs || !fs) return;
-    vs[vsize] = '\0';
-    fs[fsize] = '\0';
-
-    r3ReadMemory(vsize, (u8*)asset->data + sizeof(u64), vs);
-    r3ReadMemory(fsize, (u8*)asset->data + vsize + sizeof(u64) * 2, fs);
-
-    asset->shader.shader = UFRINewShader((UFRIShaderDesc){
-        .vertex = vs,
-        .fragment = fs,
-        .use = asset->header.use,
-    });
-
-    r3FreeMemory(vs);
-    r3FreeMemory(fs);
-}
-
-void _UFAParseTexture(UFAsset* asset) {
-    if (!asset || !asset->data) return;
-    if (asset->header.type != UFA_TEXTURE) return;
-
-    u32 use, memuse, format;
-    r3ReadMemory(sizeof(u32), (u8*)asset->data, &use);
-    r3ReadMemory(sizeof(u32), (u8*)asset->data + sizeof(u32), &memuse);
-    r3ReadMemory(sizeof(u32), (u8*)asset->data + sizeof(u32) * 2, &format);
-
-    u64 textureSize = asset->header.dataLen - sizeof(u32) * 3;
-    void* data = r3AllocMemory(textureSize);
-    if (!data) return;
-
-    r3ReadMemory(textureSize, (u8*)asset->data + sizeof(u32) * 3, data);
-
-    i32 channels = 0;
-    i32 width, height;
-    stbi_set_flip_vertically_on_load(1);
-    void* textureData = stbi_load_from_memory(data, textureSize, &width, &height, &channels, 0);
-    if (!textureData) {
-        r3FreeMemory(data);
-        return;
-    }
-
-    asset->texture.texture = UFRINewTexture((UFRITextureDesc){
-        .use = use,
-        .width = width,
-        .height = height,
-        .memuse = memuse,
-        .format = format,
-        .data = textureData
-    });
-
-    if (!asset->texture.texture.handle) {
-        free(textureData);
-    } r3FreeMemory(data);
-}
-
 UFResult UFALoadPack(char* tag, char* path) {
     if (!tag || !path) return UF_ERROR;
 
@@ -278,6 +216,9 @@ UFResult UFALoadPack(char* tag, char* path) {
 
         switch(a.header.type) {
             default: break;
+            case UFA_MESH: {
+                _UFAParseMesh(&a);
+            } break;
             case UFA_SHADER: {
                 _UFAParseShader(&a);
             } break;

@@ -1,4 +1,5 @@
-#include "_UFS.h"
+#include "../_UFS.h"
+
 
 void UFSDelComponent(UFHandle handle, UFSScene* scene) {
     if (!UFREResourceValid(handle, &scene->componentPool)) return;

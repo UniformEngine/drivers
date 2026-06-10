@@ -1,5 +1,34 @@
 #include "pack.c"
-#include "asset.c"
+
+#include "asset/mesh/loader.c"
+#include "asset/shader/loader.c"
+#include "asset/texture/loader.c"
+
+
+UFResult UFAUnloadAsset(char* tag) {
+    if (!tag) return UF_ERROR;
+
+    UFAsset asset = {0};
+    if (!r3RemHashArray(tag, UFAInternal.assets.map, &asset)) {
+        return UF_ERROR;
+    }
+
+    switch (asset.header.type) {
+        default: break;
+        case UFA_SHADER: {
+            UFRIDelShader(asset.shader.shader);
+        } break;
+        case UFA_TEXTURE: {
+            void* data = NULL;
+            UFRIGetData(asset.texture.texture, &data);
+            UFRIDelShader(asset.texture.texture);
+            if (data) free(data);
+        } break;
+    } if (asset.data) r3FreeMemory(asset.data);
+
+    UFAInternal.assets.count--;
+    return UF_OK;
+}
 
 
 none driverInit(void) {
@@ -41,6 +70,14 @@ static void _delAssets(ptr value) {
     switch(asset->header.type) {
         default: break;
         case (UFA_MESH): {
+            UFRIVertexBufferDesc vdesc;
+            UFRIGetDesc(asset->mesh.vbo, &vdesc);
+            r3DelArray(vdesc.vertices);
+
+            UFRIIndexBufferDesc idesc;
+            UFRIGetDesc(asset->mesh.ibo, &idesc);
+            r3DelArray(idesc.indices);
+
             UFRIDelVertexBuffer(asset->mesh.vbo);
             UFRIDelIndexBuffer(asset->mesh.ibo);
         } break;
@@ -70,6 +107,7 @@ static UFA API = {
     .bakePack = UFABakePack,
     .packAsset = UFAPackAsset,
 
+    .getMesh = UFAGetMesh,
     .loadMesh = UFALoadMesh,
 
     .getShader = UFAGetShader,

@@ -3,15 +3,23 @@
 #define __UF_API__
 #include <include/uniform/uniform.h>
 
+typedef enum UFAMeshFormat {
+    UFA_MESH_OBJ,
+    UFA_MESH_GLTF,
+} UFAMeshFormat;
+
 typedef struct UFAMeshDesc {
     char* tag;
     char* path;
+    u32 format;
 } UFAMeshDesc;
 
 typedef struct UFAMesh {
     UFRIResource vbo;
     UFRIResource ibo;
-    u32 nvertices;
+    u32 vertices;
+    u32 indices;
+    u32 attribs;
 } UFAMesh;
 
 typedef struct UFATextureDesc {

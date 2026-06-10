@@ -1,5 +1,6 @@
-#include "_UFS.h"
+#include "../_UFS.h"
 #include <stdio.h>
+
 
 UFHandle UFSNewArchetype(u32 capacity, u8 ncomponents, UFHandle* components, UFSScene* scene) {
     if (!capacity || !ncomponents || !components) return UF_INVALID;

@@ -1,8 +1,8 @@
 #include "_UFS.h"
-#include "entity.c"
-#include "query.c"
-#include "archetype.c"
-#include "component.c"
+#include "ecs/query.c"
+#include "ecs/entity.c"
+#include "ecs/archetype.c"
+#include "ecs/component.c"
 
 static UFHandle* UFSLiveScenes = NULL;
 static UFResourcePool UFSScenePool = {0};
