@@ -3,11 +3,11 @@
 #include "../../_UFA.h"
 
 
-typedef struct UFAMeshKey {
+typedef struct UFAMeshVertexKey {
     u32 vi;
     u32 ti;
     u32 ni;
-} UFAMeshKey;
+} UFAMeshVertexKey;
 
 // This structure must match the `UFRIVertexAttrib` enum
 typedef struct UFAMeshVertex {
@@ -17,7 +17,7 @@ typedef struct UFAMeshVertex {
 } UFAMeshVertex;
 
 typedef struct UFAMeshEntry {
-    UFAMeshKey key;
+    UFAMeshVertexKey key;
     u32 index;
     u8 used;
 } UFAMeshEntry;
@@ -56,15 +56,15 @@ static inline u8 _strinstr(char* str, char* sub) {
     } return 0;
 }
 
-static inline u32 _hashedMeshKey(UFAMeshKey k) {
+static inline u32 _hashedMeshKey(UFAMeshVertexKey k) {
     return k.vi * 73856093u ^ k.ti * 19349663u ^ k.ni * 83492791u;
 }
 
-static inline u32 _hashedMeshSlot(UFAMeshKey k, u32 mask) {
+static inline u32 _hashedMeshSlot(UFAMeshVertexKey k, u32 mask) {
     return _hashedMeshKey(k) & mask;
 }
 
-static inline u32 _hashedMeshLookup(u32 mask, UFAMeshKey key, UFAMeshEntry* map) {
+static inline u32 _hashedMeshLookup(u32 mask, UFAMeshVertexKey key, UFAMeshEntry* map) {
     u32 h = _hashedMeshSlot(key, mask);
     while (map[h].used) {
         if (memcmp(&map[h].key, &key, sizeof(key)) == 0) {
@@ -74,17 +74,93 @@ static inline u32 _hashedMeshLookup(u32 mask, UFAMeshKey key, UFAMeshEntry* map)
 }
 
 
-// TODO: implement 3-phase pipeline
-//  parse -> triangulation (fan for now ear clip later) -> packing
+UFResult _parseOBJFace(char* cursor, void* keys) {
+    while (*cursor) {
+        while (*cursor == ' ') cursor++;
+        if (*cursor == '\n' || *cursor == '\r' || *cursor == '\0') break;
+        UFAMeshVertexKey key = {
+            .vi = strtoul(cursor, &cursor, 10) - 1,
+            .ti = 0xFFFFFFFF,
+            .ni = 0xFFFFFFFF,
+        };
+
+        if (*cursor == '/') {
+            cursor++;
+            if (*cursor != '/') {
+                key.ti = strtoul(cursor, &cursor, 10) - 1;
+            } if (*cursor == '/') {
+                cursor++;
+                key.ni = strtoul(cursor, &cursor, 10) - 1;
+            }
+        } r3PushArray(&key, keys);
+    } return UF_OK;
+}
+
+void _triangulateOBJFace(
+    UFAMeshEntry* map,
+    UFAMeshVertexKey* keys,
+    f32* uvs,
+    f32* normals,
+    u32* indices,
+    UFAMeshVertex* vertices,
+    f32* positions
+) {
+    for(u32 i = 1; i + 1 < r3ArrayCount(keys); i++) {
+        // triangle fan
+        // a quad (0, 1, 2, 3) becomes two triangles (0, 1, 2) and (0, 2, 3)
+        UFAMeshVertexKey verts[3] = {
+            keys[0],
+            keys[i],
+            keys[i + 1],
+        };
+
+        for(u32 j = 0; j < 3; j++) {
+            UFAMeshVertexKey key = verts[j];
+
+            u32 h = _hashedMeshLookup(r3ArraySlots(map) - 1, key, map);
+            u32 idx = 0;
+
+            if (map[h].used) {
+                idx = map[h].index;
+            } else {
+                UFAMeshVertex vert = {0};
+                idx = r3ArrayCount(vertices);
+
+                vert.pos[0] = positions[key.vi * 3 + 0];
+                vert.pos[1] = positions[key.vi * 3 + 1];
+                vert.pos[2] = positions[key.vi * 3 + 2];
+
+                if (key.ti != 0xFFFFFFFF) {
+                    vert.uv[0] = uvs[key.ti * 2 + 0];
+                    vert.uv[1] = uvs[key.ti * 2 + 1];
+                } if (key.ni != 0xFFFFFFFF) {
+                    vert.nrm[0] = normals[key.ni * 3 + 0];
+                    vert.nrm[1] = normals[key.ni * 3 + 1];
+                    vert.nrm[2] = normals[key.ni * 3 + 2];
+                }
+
+                r3PushArray(&vert, vertices);
+
+                map[h] = (UFAMeshEntry){
+                    .used = 1,
+                    .key = key,
+                    .index = idx,
+                };
+            } r3PushArray(&idx, indices);
+        }
+    } r3ClearArray(keys);
+    return;
+}
+
 UFAMeshData UFAImportOBJ(char* path) {
     if (!path) return (UFAMeshData){0};
 
     char* file = r3LoadFile(path);
     if (!file) return (UFAMeshData){0};
 
-    f32* positions = r3NewArray(1024, sizeof(f32));
-    f32* uvs       = r3NewArray(1024, sizeof(f32));
-    f32* normals   = r3NewArray(1024, sizeof(f32));
+    f32* positions = r3NewArray(16384, sizeof(f32));
+    f32* uvs       = r3NewArray(16384, sizeof(f32));
+    f32* normals   = r3NewArray(16384, sizeof(f32));
     if (!positions || !uvs || !normals) {
         if (positions) r3DelArray(positions);
         if (normals) r3DelArray(normals);
@@ -93,13 +169,13 @@ UFAMeshData UFAImportOBJ(char* path) {
         return (UFAMeshData){0};
     }
 
-    UFAMeshEntry* map = r3NewArray(2048, sizeof(UFAMeshEntry));
+    UFAMeshVertexKey* keys = r3NewArray(16384, sizeof(UFAMeshVertexKey));
+    UFAMeshEntry* map = r3NewArray(16384, sizeof(UFAMeshEntry));
 
-    u32* indices = r3NewArray(1024, sizeof(u32));
-    UFAMeshVertex* vertices = r3NewArray(1024, sizeof(UFAMeshVertex));
-    if (!vertices || !indices || !map) goto fail;
+    u32* indices = r3NewArray(16384, sizeof(u32));
+    UFAMeshVertex* vertices = r3NewArray(16384, sizeof(UFAMeshVertex));
+    if (!vertices || !indices || !map || !keys) goto fail;
 
-    u32 nindices = 0;
     char* cursor = file;
     while (*cursor) {
         if (_startswith(cursor, "v ")) {
@@ -125,80 +201,17 @@ UFAMeshData UFAImportOBJ(char* path) {
             }
         } else if (_startswith(cursor, "f ")) {
             cursor += 2;
-            u32 vertex = 0;
-            while (*cursor) {
-                while (*cursor == ' ') cursor++;
-                if (*cursor == '\n' || *cursor == '\r' || *cursor == '\0') break;
-                if (vertex >= 3) goto fail;
-
-                UFAMeshKey key = {
-                    .vi = strtoul(cursor, &cursor, 10) - 1,
-                    .ti = 0xFFFFFFFF,
-                    .ni = 0xFFFFFFFF,
-                };
-
-                // supports 4 face formats v | v/vt | v//vn | v/vt/vn
-                // missing attribs are defaulted to 0xFFFFFFFF in during parsing and 0 during packing
-                if (*cursor == '/') {
-                    cursor++;
-                    if (*cursor != '/') {
-                        key.ti = strtoul(cursor, &cursor, 10) - 1;
-                    } if (*cursor == '/') {
-                        cursor++;
-                        key.ni = strtoul(cursor, &cursor, 10) - 1;
-                    }
-                }
-
-                // lookup or insert unique per-face vertices
-                u32 idx = 0;
-                u32 h = _hashedMeshLookup(r3ArraySlots(map) - 1, key, map);
-                if (map[h].used) {
-                    idx = map[h].index;
-                } else {
-                    UFAMeshVertex v = {0};
-                    idx = r3ArrayCount(vertices);
-
-                    v.pos[0] = positions[key.vi * 3];
-                    v.pos[1] = positions[key.vi * 3 + 1];
-                    v.pos[2] = positions[key.vi * 3 + 2];
-
-                    if (key.ti != 0xFFFFFFFF) {
-                        v.uv[0] = uvs[key.ti * 2];
-                        v.uv[1] = uvs[key.ti * 2 + 1];
-                    } if (key.ni != 0xFFFFFFFF) {
-                        v.nrm[0] = normals[key.ni * 3];
-                        v.nrm[1] = normals[key.ni * 3 + 1];
-                        v.nrm[2] = normals[key.ni * 3 + 2];
-                    }
-
-                    if (r3ArrayFull(vertices)) {
-                        vertices = r3ResizeArray(r3ArraySlots(vertices)*1.5, sizeof(UFAMeshVertex), vertices);
-                    } r3PushArray(&v, vertices);
-
-                    if (r3ArrayFull(map)) {
-                        map = r3ResizeArray(r3ArraySlots(map)*2, sizeof(UFAMeshEntry), map);
-                    } r3PushArray(&(UFAMeshEntry){
-                        .used = 1,
-                        .key = key,
-                        .index = idx,
-                    }, map);
-                }
-
-                if (r3ArrayFull(indices)) {
-                    indices = r3ResizeArray(r3ArraySlots(indices)*1.5, sizeof(u32), indices);
-                } r3PushArray(&idx, indices);
-
-                nindices++;
-                vertex++;
-            }
+            if (_parseOBJFace(cursor, keys) != UF_OK) {
+                goto fail;
+            } _triangulateOBJFace(map, keys, uvs, normals, indices, vertices, positions);
         }
-
         while (*cursor && *cursor != '\n') cursor++;
         if (*cursor == '\n') cursor++;
     }
 
     r3DelArray(positions);
     r3DelArray(normals);
+    r3DelArray(keys);
     r3DelArray(uvs);
     r3DelArray(map);
     r3DelFile(file);
@@ -206,15 +219,17 @@ UFAMeshData UFAImportOBJ(char* path) {
     return (UFAMeshData) {
         .attribs = UFRI_ATTRIB_POSITION | UFRI_ATTRIB_UV | UFRI_ATTRIB_NORMAL,
         .nvertices = r3ArrayCount(vertices),
+        .nindices = r3ArrayCount(indices),
         .stride = sizeof(UFAMeshVertex),
         .vertices = (f32*)vertices,
-        .nindices = nindices,
         .indices = indices,
     };
 
     fail:
         r3DelArray(positions);
         r3DelArray(normals);
+        r3DelArray(keys);
+        r3DelArray(map);
         r3DelArray(uvs);
         r3DelFile(file);
         return (UFAMeshData){0};
